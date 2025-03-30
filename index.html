@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMT Context: Cooperation Choices & Group Competition</title>
+
+    <!-- Include p5.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+
+    <!-- Inline CSS -->
+    <style>
+      body {
+        font-family: sans-serif; display: flex; flex-direction: column;
+        align-items: center; padding: 20px; background-color: #e9ecef;
+        min-height: 100vh; box-sizing: border-box;
+      }
+      h1 { text-align: center; margin-bottom: 15px; }
+      #page-container { width: 95%; max-width: 1200px; }
+      #static-explanation {
+          background-color: #fff; padding: 20px 25px; border: 1px solid #ccc;
+          margin-bottom: 25px; font-size: 0.95em; line-height: 1.6;
+      }
+       #static-explanation h3 { margin-top: 0; margin-bottom: 15px; font-size: 1.2em; color: #333; text-align: center; }
+       #static-explanation h4 { margin-top: 18px; margin-bottom: 8px; font-size: 1.05em; color: #111; }
+       #static-explanation p { margin-bottom: 10px; }
+       #static-explanation strong { color: #000; }
+       #static-explanation hr { margin: 18px 0; border: 0; border-top: 1px solid #eee; }
+       .costly-error-static { color: #D32F2F; font-weight: bold; }
+       .cheap-error-static { color: #757575; font-weight: bold; }
+       .bias-favored-static { color: #388E3C; font-weight: bold;}
+
+       #simulation-area { display: flex; flex-direction: row; gap: 30px; align-items: flex-start; }
+       #canvas-container {
+           position: relative; width: 402px; height: 402px;
+           flex-shrink: 0; background-color: #fff; border: 1px solid #aaa;
+       }
+       canvas { display: block; position: absolute; top:0; left: 0; }
+       #fitness-pulse-div {
+           position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+           border-radius: 50%; box-sizing: border-box; opacity: 0;
+           pointer-events: none; z-index: 5;
+       }
+       .pulse-animation { opacity: 0.7; animation: pulse 0.7s ease-out; }
+       @keyframes pulse {
+           0% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
+           100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
+       }
+
+       #dynamic-panel { display: flex; flex-direction: column; flex-grow: 1; min-width: 400px; }
+       #controls-container {
+           margin-bottom: 20px; text-align: center; padding: 15px;
+           border: 1px solid #ccc; background-color: #fff;
+       }
+       #controls-container button { margin: 8px 10px; }
+       #dynamic-explanation {
+           padding: 20px; border: 1px solid #ccc; background-color: #fff;
+           font-size: 0.95em; line-height: 1.6; flex-grow: 1;
+       }
+       #dynamic-explanation h4 { margin-top: 0; margin-bottom: 10px; font-size: 1.1em; color: #333; }
+       #dynamic-explanation p { margin-bottom: 12px; }
+       #dynamic-explanation strong { color: #000; }
+       .consequence { font-style: italic; margin-top: 10px; padding: 10px; background-color: #e9ecef; border-radius: 4px; border-left: 4px solid #adb5bd; }
+       .takeover-message { padding: 15px; background-color: #dc3545; /* Red */ color: white; border-radius: 5px; text-align: center; font-weight: bold; font-size: 1.05em; }
+
+       /* Shared Highlighting */
+       .actor { color: #007bff; font-weight: bold; }
+       .ingroup-peer { color: #6c757d; font-weight: bold; }
+       .outgroup-member { color: #dc3545; font-weight: bold; }
+       .main-circle-ref { color: #17a2b8; font-weight: bold; }
+       .fitness-info { font-weight: bold; text-align: center; margin-top: 5px; font-size: 1.05em; }
+       .fitness-gain { color: #2E7D32; font-weight: bold; }
+       .fitness-malus { color: #B71C1C; font-weight: bold; font-size: 1.1em; }
+
+       /* Buttons */
+       button {
+           padding: 10px 18px; font-size: 1em; cursor: pointer;
+           background-color: #e7e7e7; border: 1px solid #ccc; border-radius: 4px;
+           transition: background-color 0.2s;
+       }
+       button:hover:not(:disabled) { background-color: #dcdcdc; }
+       button:disabled { opacity: 0.5; cursor: not-allowed; }
+       #ingroup-coop-button { background-color: #c8e6c9; border-color: #a5d6a7; }
+       #outgroup-coop-button { background-color: #ffcdd2; border-color: #ef9a9a; }
+
+    </style>
+</head>
+<body>
+    <h1>EMT Context: Cooperation Choices & Group Competition</h1>
+    <div id="page-container">
+        <div id="static-explanation">
+             <!-- Static Text Content remains the same as previous version -->
+             <h3>The Scene & Underlying Logic</h3>
+             <p>You see the <span class="actor">Actor</span> (blue circle) positioned within their <span class="main-circle-ref">Ingroup's conceptual space</span> (light blue area). The <strong>size</strong> of this light blue area represents the current <strong>Group Fitness</strong>. An <span class="ingroup-peer">Ingroup Peer</span> (gray circle) moves within this space, while an <span class="outgroup-member">Outgroup Member</span> (red circle) moves outside.</p>
+             <h4>Error Management Theory (EMT) & Group Context (Efferson et al.)</h4>
+             <p>Social decisions are complex. We face <strong>uncertainty</strong> (e.g., others' intentions, future encounters) and the <strong>costs of potential errors</strong> are often unequal (asymmetric). EMT proposes that evolution has shaped our psychology to primarily avoid the <strong><span class="costly-error-static">more costly error</span></strong>, even if this means making the <span class="cheap-error-static">'cheaper' error</span> more frequently. This results in cognitive biases.</p>
+             <p><strong>1. Ingroup Interactions:</strong><br>
+                - Uncertainty: Will this interaction repeat? Is reputation important? <br>
+                - <span class="costly-error-static">Costly Error:</span> Unwarranted defection/mistrust. If the relationship could have been long-term or reputation matters, this damages future cooperation and social standing.<br>
+                - <span class="cheap-error-static">Cheap Error:</span> Unwarranted cooperation/trust. If it was just a one-shot interaction, the cost is typically small (a single instance of potentially unreciprocated help).<br>
+                - <strong>Resulting Bias:</strong> Evolution favors risking the cheap error. This leads to a bias towards initial <span class="bias-favored-static">trust, friendliness, and cooperation</span> with ingroup members.</p>
+              <p><strong>2. Outgroup Interactions (especially with potential group competition):</strong><br>
+                - Uncertainty: Are they trustworthy? How does this affect our group's standing against theirs?<br>
+                - <span class="costly-error-static">Costly Error (The 'Malus'):</span> Unwarranted cooperation/trust. This can lead to direct exploitation by the outgroup member. Crucially, in the context of intergroup competition (as in Efferson et al.), investing resources (time, help, information) in an outgroup inherently weakens your own group's relative strength and potential success against competitors.<br>
+                - <span class="cheap-error-static">Cheap Error:</span> Unwarranted caution/non-cooperation. If the outgroup member *was* trustworthy, a mutually beneficial interaction was missed.<br>
+                - <strong>Resulting Bias:</strong> Evolution favors avoiding the severe 'Malus'. This leads to a bias towards initial <span class="costly-error-static">caution, skepticism, and potentially non-cooperation</span> towards outgroup members.</p>
+             <hr>
+             <p><i>This simulation allows you to manually trigger cooperation and observe the fitness consequences predicted by this framework.</i></p>
+        </div>
+
+        <div id="simulation-area">
+            <div id="canvas-container">
+                 <div id="fitness-pulse-div" class="pulse-div"></div>
+                 <!-- Canvas -->
+            </div>
+            <div id="dynamic-panel">
+                <div id="controls-container">
+                    <button id="ingroup-coop-button">Cooperate with Ingroup Peer <br><span style="font-size: 0.8em; font-style: italic;">(Follows Ingroup Bias)</span></button>
+                    <button id="outgroup-coop-button">Cooperate with Outgroup Member <br><span style="font-size: 0.8em; font-style: italic;">(Against Outgroup Bias)</span></button>
+                    <p class="fitness-info">Group Fitness: <span id="fitness-display">100</span></p>
+                </div>
+                <div id="dynamic-explanation">
+                     <h4>Simulation Status & Last Action</h4>
+                     <p id="status-text">Simulation running. Choose an action.</p>
+                     <div id="last-action-consequence">
+                         <!-- Content updated dynamically -->
+                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inline JavaScript (p5.js Sketch) -->
+    <script>
+        // --- Constants ---
+        const CANVAS_WIDTH = 400; const CANVAS_HEIGHT = 400;
+        const BASE_FITNESS = 100; const MIN_FITNESS = 69;
+        const MAX_FITNESS = 180; const FITNESS_SCALE_FACTOR = 1.8;
+        // *** Slightly increased LERP factor for visibility ***
+        const FITNESS_LERP_FACTOR = 0.06;
+
+        const ACTOR_SIZE = 30; const PEER_SIZE = 25; const OUTGROUP_SIZE = 25;
+        const COMPETITOR_SIZE = 50;
+        const PEER_MOVE_SPEED = 0.5; const OUTGROUP_MOVE_SPEED = 0.6;
+        const COMPETITOR_SPEED = 1.5;
+        const TARGET_CHANGE_INTERVAL = 2000; const AVOID_RADIUS = 50;
+
+        const INGROUP_COOP_BONUS = 3; const OUTGROUP_COOP_MALUS = -15;
+        const COOP_LINE_DURATION = 800;
+        const COMPETITOR_LINGER_DURATION = 1500;
+        const COLOR_TRANSITION_SPEED = 0.03;
+
+        // --- Global Variables ---
+        let mainCircle = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, fitness: BASE_FITNESS, currentSize: BASE_FITNESS, color: null, targetColor: null };
+        let actorCircle = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, size: ACTOR_SIZE, color: null, alpha: 220 };
+        let ingroupPeerCircle = { x: 0, y: 0, size: PEER_SIZE, targetX: 0, targetY: 0, lastTargetChange: 0, color: null, alpha: 200 };
+        let outgroupCircle = { x: 0, y: 0, size: OUTGROUP_SIZE, targetX: 0, targetY: 0, lastTargetChange: 0, color: null };
+        let competitorCircle = { x: -100, y: -100, size: COMPETITOR_SIZE, active: false, targetX: CANVAS_WIDTH / 2, targetY: CANVAS_HEIGHT / 2, color: null, arrived: false, lingerTimer: 0 };
+
+        let showCoopLine = false; let coopLineTarget = null; let coopLineTimer = 0;
+        let simulationState = 'RUNNING';
+        let lastActionInfo = { type: null, fitnessDelta: 0 };
+
+        // --- HTML References ---
+        let dynamicExplanationDiv, statusTextP, lastActionDiv, fitnessDisplay, fitnessPulseDiv;
+        let ingroupCoopButton, outgroupCoopButton;
+
+        // --- Colors ---
+        let colorCompetitorGreen, colorCoopLine;
+
+        // --- p5.js Setup ---
+        function setup() {
+            let canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+            canvas.parent('canvas-container');
+            // HTML references
+            dynamicExplanationDiv = select('#dynamic-explanation'); 
+            statusTextP = select('#status-text');
+            lastActionDiv = select('#last-action-consequence'); 
+            fitnessDisplay = select('#fitness-display');
+            fitnessPulseDiv = select('#fitness-pulse-div'); 
+            ingroupCoopButton = select('#ingroup-coop-button');
+            outgroupCoopButton = select('#outgroup-coop-button');
+
+            // Define Colors
+            mainCircle.color = color(200, 220, 255, 150); 
+            mainCircle.targetColor = mainCircle.color;
+            actorCircle.color = color(0, 123, 255, actorCircle.alpha);
+            ingroupPeerCircle.color = color(108, 117, 125, ingroupPeerCircle.alpha);
+            outgroupCircle.color = color(220, 53, 69, 200);
+            colorCompetitorGreen = color(40, 167, 69, 210); 
+            competitorCircle.color = colorCompetitorGreen;
+            colorCoopLine = color(40, 167, 69, 200);
+
+            // Initial positions & targets
+            setInitialPeerPosition(); 
+            setInitialOutgroupPosition();
+            pickNewTarget(ingroupPeerCircle, true); 
+            pickNewTarget(outgroupCircle, false);
+
+            // Listeners
+            ingroupCoopButton.mousePressed(handleIngroupCooperation);
+            outgroupCoopButton.mousePressed(handleOutgroupCooperation);
+
+            updateDynamicExplanation('INITIAL');
+            frameRate(30);
+        }
+
+        // --- p5.js Draw ---
+        function draw() {
+            background(255); // White canvas
+
+            // Updates
+            mainCircle.currentSize = lerp(mainCircle.currentSize, mainCircle.fitness, FITNESS_LERP_FACTOR);
+            mainCircle.color = lerpColor(mainCircle.color, mainCircle.targetColor, COLOR_TRANSITION_SPEED);
+
+            if (simulationState === 'RUNNING') {
+                moveCircle(ingroupPeerCircle, true);
+                moveCircle(outgroupCircle, false);
+            } else if (simulationState === 'TAKEOVER_IN_PROGRESS') {
+                moveCompetitor();
+                actorCircle.alpha = lerp(actorCircle.alpha, 50, 0.05);
+                ingroupPeerCircle.alpha = lerp(ingroupPeerCircle.alpha, 50, 0.05);
+                actorCircle.color.setAlpha(actorCircle.alpha);
+                ingroupPeerCircle.color.setAlpha(ingroupPeerCircle.alpha);
+            }
+
+            // --- Drawing --- 
+            fill(mainCircle.color); 
+            noStroke();
+            ellipse(mainCircle.x, mainCircle.y, mainCircle.currentSize * FITNESS_SCALE_FACTOR, mainCircle.currentSize * FITNESS_SCALE_FACTOR);
+
+            if (simulationState === 'RUNNING' || simulationState === 'TAKEOVER_IN_PROGRESS') {
+                fill(ingroupPeerCircle.color); 
+                noStroke();
+                ellipse(ingroupPeerCircle.x, ingroupPeerCircle.y, ingroupPeerCircle.size, ingroupPeerCircle.size);
+                
+                if (simulationState === 'RUNNING') {
+                    fill(outgroupCircle.color); 
+                    noStroke();
+                    ellipse(outgroupCircle.x, outgroupCircle.y, outgroupCircle.size, outgroupCircle.size);
+                }
+            }
+
+            fill(actorCircle.color); 
+            stroke(255); 
+            strokeWeight(1.5);
+            ellipse(actorCircle.x, actorCircle.y, actorCircle.size, actorCircle.size);
+
+            // Cooperation Line
+            if (showCoopLine && coopLineTarget && simulationState === 'RUNNING') {
+                if (typeof coopLineTarget.x === 'number' && typeof coopLineTarget.y === 'number') {
+                    stroke(colorCoopLine); 
+                    strokeWeight(3);
+                    line(actorCircle.x, actorCircle.y, coopLineTarget.x, coopLineTarget.y);
+                }
+                coopLineTimer -= deltaTime;
+                if (coopLineTimer <= 0) { 
+                    showCoopLine = false; 
+                    coopLineTarget = null; 
+                }
+            }
+
+            // Competitor Circle
+            if (competitorCircle.active) {
+                fill(competitorCircle.color);
+                if (competitorCircle.arrived && competitorCircle.lingerTimer > 0) {
+                    competitorCircle.lingerTimer -= deltaTime;
+                    let alphaValue = map(competitorCircle.lingerTimer, COMPETITOR_LINGER_DURATION, 0, 210, 0, true);
+                    competitorCircle.color.setAlpha(alphaValue);
+                    if (competitorCircle.lingerTimer <= 0) { 
+                        competitorCircle.active = false; 
+                    }
+                } else if (!competitorCircle.arrived) { 
+                    competitorCircle.color.setAlpha(210); 
+                }
+                noStroke();
+                ellipse(competitorCircle.x, competitorCircle.y, competitorCircle.size, competitorCircle.size);
+            }
+        }
+
+        // --- Movement Logic ---
+        function moveCircle(circle, stayInside) {
+            if (simulationState !== 'RUNNING') return;
+            
+            if (millis() - circle.lastTargetChange > TARGET_CHANGE_INTERVAL) { 
+                pickNewTarget(circle, stayInside); 
+            }
+            
+            let targetVec = createVector(circle.targetX, circle.targetY); 
+            let currentVec = createVector(circle.x, circle.y);
+            let direction = p5.Vector.sub(targetVec, currentVec); 
+            direction.limit(stayInside ? PEER_MOVE_SPEED : OUTGROUP_MOVE_SPEED); 
+            currentVec.add(direction);
+            
+            let mainVisualRadius = mainCircle.currentSize * FITNESS_SCALE_FACTOR / 2;
+            
+            if (stayInside) {
+                let checkRadius = max(circle.size / 2, mainVisualRadius - circle.size / 2);
+                let distFromCenter = dist(currentVec.x, currentVec.y, mainCircle.x, mainCircle.y);
+                
+                if (distFromCenter > checkRadius) { 
+                    let angleToCenter = atan2(mainCircle.y - currentVec.y, mainCircle.x - currentVec.x); 
+                    currentVec.x = mainCircle.x + cos(angleToCenter) * checkRadius; 
+                    currentVec.y = mainCircle.y + sin(angleToCenter) * checkRadius; 
+                    pickNewTarget(circle, stayInside); 
+                }
+                
+                let distFromActor = dist(currentVec.x, currentVec.y, actorCircle.x, actorCircle.y);
+                if(distFromActor < AVOID_RADIUS) { 
+                    let angleFromActor = atan2(currentVec.y - actorCircle.y, currentVec.x - actorCircle.x); 
+                    currentVec.x = actorCircle.x + cos(angleFromActor) * AVOID_RADIUS; 
+                    currentVec.y = actorCircle.y + sin(angleFromActor) * AVOID_RADIUS; 
+                    pickNewTarget(circle, stayInside); 
+                }
+            } else {
+                let checkRadius = mainVisualRadius + circle.size / 2 + 5;
+                let distFromCenter = dist(currentVec.x, currentVec.y, mainCircle.x, mainCircle.y);
+                
+                if (distFromCenter < checkRadius) { 
+                    let angleFromCenter = atan2(currentVec.y - mainCircle.y, currentVec.x - mainCircle.x); 
+                    currentVec.x = mainCircle.x + cos(angleFromCenter) * checkRadius; 
+                    currentVec.y = mainCircle.y + sin(angleFromCenter) * checkRadius; 
+                    pickNewTarget(circle, stayInside); 
+                }
+                
+                currentVec.x = constrain(currentVec.x, circle.size/2, width - circle.size/2); 
+                currentVec.y = constrain(currentVec.y, circle.size/2, height - circle.size/2);
+            }
+            
+            circle.x = currentVec.x; 
+            circle.y = currentVec.y;
+        }
+        
+        function pickNewTarget(circle, stayInside) {
+            let mainVisualRadius = mainCircle.currentSize * FITNESS_SCALE_FACTOR / 2;
+            
+            if (stayInside) { 
+                let angle = random(TWO_PI); 
+                let minPeerRadius = AVOID_RADIUS; 
+                let maxPeerRadius = max(minPeerRadius + 5, mainVisualRadius - circle.size / 2); 
+                let radius = random(minPeerRadius, maxPeerRadius); 
+                circle.targetX = mainCircle.x + cos(angle) * radius; 
+                circle.targetY = mainCircle.y + sin(angle) * radius;
+            } else { 
+                let angle = random(TWO_PI); 
+                let minR = max(10, mainVisualRadius + circle.size/2 + 20); 
+                let maxR = min(width, height)/2 * 1.5; 
+                let radius = random(minR, max(minR + 10, maxR)); 
+                let potentialX = mainCircle.x + cos(angle) * radius; 
+                let potentialY = mainCircle.y + sin(angle) * radius; 
+                circle.targetX = constrain(potentialX, -50, width + 50); 
+                circle.targetY = constrain(potentialY, -50, height + 50); 
+            }
+            
+            circle.lastTargetChange = millis();
+        }
+
+        // --- Initial Placement ---
+        function setInitialPeerPosition() {
+            let angle = random(TWO_PI);
+            let radius = random(AVOID_RADIUS, (BASE_FITNESS * FITNESS_SCALE_FACTOR / 2) - 15);
+            ingroupPeerCircle.x = mainCircle.x + cos(angle) * radius;
+            ingroupPeerCircle.y = mainCircle.y + sin(angle) * radius;
+        }
+        
+        function setInitialOutgroupPosition() {
+            let angle = random(TWO_PI);
+            let radius = (BASE_FITNESS * FITNESS_SCALE_FACTOR / 2) + 20 + random(30);
+            outgroupCircle.x = mainCircle.x + cos(angle) * radius;
+            outgroupCircle.y = mainCircle.y + sin(angle) * radius;
+        }
+
+        // --- Takeover Logic ---
+        function triggerTakeover() {
+            if (simulationState === 'TAKEOVER_IN_PROGRESS') return;
+            
+            console.log("Group Takeover Triggered!");
+            simulationState = 'TAKEOVER_IN_PROGRESS';
+            statusTextP.html('Group Takeover in Progress...');
+            updateDynamicExplanation('TAKEOVER');
+
+            // Position competitor off-screen
+            let angle = random(TWO_PI);
+            competitorCircle.x = mainCircle.x + cos(angle) * (width * 0.7);
+            competitorCircle.y = mainCircle.y + sin(angle) * (height * 0.7);
+            competitorCircle.active = true;
+            competitorCircle.arrived = false;
+            competitorCircle.targetX = mainCircle.x;
+            competitorCircle.targetY = mainCircle.y;
+            competitorCircle.lingerTimer = COMPETITOR_LINGER_DURATION; // Reset linger timer
+
+            ingroupCoopButton.attribute('disabled', '');
+            outgroupCoopButton.attribute('disabled', '');
+        }
+        
+        function moveCompetitor() {
+            if (!competitorCircle.active || competitorCircle.arrived) return;
+
+            let targetVec = createVector(competitorCircle.targetX, competitorCircle.targetY);
+            let currentVec = createVector(competitorCircle.x, competitorCircle.y);
+            let direction = p5.Vector.sub(targetVec, currentVec);
+            let distance = direction.mag();
+
+            if (distance > COMPETITOR_SPEED) {
+                direction.limit(COMPETITOR_SPEED);
+                currentVec.add(direction);
+                competitorCircle.x = currentVec.x;
+                competitorCircle.y = currentVec.y;
+            } else { // Competitor Arrived
+                competitorCircle.x = competitorCircle.targetX;
+                competitorCircle.y = competitorCircle.targetY;
+                if (!competitorCircle.arrived) { // Only trigger color change once
+                    competitorCircle.arrived = true;
+                    mainCircle.targetColor = colorCompetitorGreen; // Start color transition
+                    console.log("Competitor arrived, starting takeover color change.");
+                }
+            }
+        }
+
+        // --- Button Handlers & Consequences ---
+        function handleIngroupCooperation() {
+            if (simulationState !== 'RUNNING') return;
+            
+            lastActionInfo = { type: 'INGROUP', fitnessDelta: INGROUP_COOP_BONUS };
+            applyFitnessChange(lastActionInfo.fitnessDelta, 'gain');
+            triggerCooperationLine(ingroupPeerCircle);
+            updateDynamicExplanation('CONSEQUENCE');
+        }
+        
+        function handleOutgroupCooperation() {
+            if (simulationState !== 'RUNNING') return;
+            
+            lastActionInfo = { type: 'OUTGROUP', fitnessDelta: OUTGROUP_COOP_MALUS };
+            applyFitnessChange(lastActionInfo.fitnessDelta, 'malus');
+            triggerCooperationLine(outgroupCircle);
+            updateDynamicExplanation('CONSEQUENCE');
+        }
+
+        function applyFitnessChange(change, type) {
+            // Apply change to the actual fitness value
+            mainCircle.fitness += change;
+
+            // Check for takeover threshold
+            if (mainCircle.fitness <= MIN_FITNESS && simulationState === 'RUNNING') {
+                mainCircle.fitness = MIN_FITNESS; // Clamp at minimum
+                fitnessDisplay.html(Math.round(mainCircle.fitness)); // Update display
+                triggerTakeover(); // Trigger the takeover process
+            } else {
+                // Constrain fitness within normal bounds if not triggering takeover
+                mainCircle.fitness = constrain(mainCircle.fitness, MIN_FITNESS, MAX_FITNESS);
+                fitnessDisplay.html(Math.round(mainCircle.fitness)); // Update display
+
+                // Trigger pulse only if not triggering takeover and type warrants it
+                if (type !== 'neutral') {
+                    triggerFitnessPulse(type);
+                }
+            }
+        }
+
+        function triggerCooperationLine(target) {
+            if (simulationState !== 'RUNNING') return;
+            
+            showCoopLine = true;
+            coopLineTarget = target;
+            coopLineTimer = COOP_LINE_DURATION;
+        }
+
+        // --- Pulse Effect for Fitness ---
+        function triggerFitnessPulse(type) {
+            let pulseSize = 100;
+            let pulseColor;
+            
+            if (type === 'gain') {
+                pulseColor = 'rgba(46, 125, 50, 0.7)'; // Green with alpha
+            } else if (type === 'malus') {
+                pulseColor = 'rgba(183, 28, 28, 0.7)'; // Red with alpha
+                pulseSize = 130; // Larger for malus
+            }
+            
+            applyPulseStyle(fitnessPulseDiv, pulseColor, pulseSize);
+            
+            // Add the animation class - will trigger CSS animation
+            fitnessPulseDiv.addClass('pulse-animation');
+            
+            // Remove the class after animation completes
+            setTimeout(function() {
+                removePulseClass(fitnessPulseDiv);
+            }, 700); // Match duration in CSS
+        }
+        
+        function applyPulseStyle(element, pulseColor, size) {
+            element.style('background-color', pulseColor);
+            element.style('width', size + 'px');
+            element.style('height', size + 'px');
+            element.style('border', '2px solid ' + (pulseColor.replace('0.7', '1.0')));
+        }
+        
+        function removePulseClass(element) {
+            element.removeClass('pulse-animation');
+        }
+
+        // --- Dynamic Explanation Function ---
+        function updateDynamicExplanation(context) {
+            if (!dynamicExplanationDiv) return;
+            
+            let statusMsg = '';
+            let consequenceHTML = '';
+            
+            if (simulationState === 'TAKEOVER_IN_PROGRESS') {
+                statusMsg = 'Group Takeover in Progress!';
+                consequenceHTML = `<div class="takeover-message">
+                                    <strong>Group Competition Loss!</strong><br>
+                                    Persistently acting against the evolved bias (e.g., costly outgroup cooperation) drained the group's fitness below a critical threshold (${MIN_FITNESS}). Following the logic of group competition (Efferson et al.), the weakened group is now being 'taken over' by a more successful strategy (represented by green). The group's norms/strategies are shifting to match the successful competitor.
+                                  </div>`;
+            } else if (context === 'INITIAL') {
+                statusMsg = 'Simulation running. Choose an action.';
+                consequenceHTML = `<p><i>Click a button to see the effect on Group Fitness. Read the static explanation above for the underlying theory.</i></p>`;
+            } else if (context === 'CONSEQUENCE') {
+                statusMsg = 'Action consequence shown below.';
+                consequenceHTML += `<h4>Last Action & Consequence:</h4>`;
+                
+                if (lastActionInfo.type === 'INGROUP') {
+                    consequenceHTML += `<p><strong>Action:</strong> Cooperated with <span class="ingroup-peer">Ingroup Peer</span> (Followed Bias).</p>`;
+                    consequenceHTML += `<p class="consequence"><strong>Fitness Impact:</strong> Following the bias for ingroup cooperation strengthens potential reciprocal bonds and group cohesion. Cohesive groups tend to outperform less cohesive ones in competition, thus increasing overall group fitness. <br>Fitness change: <span class="fitness-gain">+${lastActionInfo.fitnessDelta}</span>.</p>`;
+                } else if (lastActionInfo.type === 'OUTGROUP') {
+                    consequenceHTML += `<p><strong>Action:</strong> Cooperated with <span class="outgroup-member">Outgroup Member</span> (Against Bias).</p>`;
+                    consequenceHTML += `<p class="consequence"><strong>Fitness Impact:</strong> Acting against the outgroup caution bias triggers the 'Malus'. Cooperating with potential competitors or untrustworthy outsiders drains resources and weakens the group's relative standing, reducing fitness. This reflects the costly error EMT predicts should be avoided. <br>Fitness change: <span class="fitness-malus">${lastActionInfo.fitnessDelta} (MALUS!)</span>.</p>`;
+                }
+            }
+            
+            statusTextP.html(statusMsg); 
+            lastActionDiv.html(consequenceHTML);
+        }
+    </script>
+</body>
+</html>
